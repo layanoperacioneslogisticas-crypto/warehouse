@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  OPERARIO
+  AUDITOR
+}
+
+enum ZoneType {
+  RACK
+  PISO
+  PICKING
+  PAV
+  NPI
+  CUARENTENA
+  RECHAZO
+  VALIDACION
+  DANADO
+  CROSS_DOCKING
+  MAQUILADO
+}
+
+enum LocationType {
+  RACK
+  FLOOR
+  PICKING
+  PAV
+  NPI
+  QUARANTINE
+  REJECT
+  VALIDATION
+  DAMAGED
+  CROSS_DOCKING
+}
+
+enum LocationStatus {
+  LIBRE
+  OCUPADO
+  BLOQUEADO
+  DANADO
+  CUARENTENA
+  PAV
+  NPI
+  VALIDACION
+  RESERVADO
+}
+
+enum InventoryStatus {
+  AVAILABLE
+  RESERVED
+  QUARANTINE
+  DAMAGED
+  BLOCKED
+}
+
+enum MovementType {
+  ASSIGNMENT
+  TRANSFER
+  RELEASE
+  ADJUSTMENT
+}
+
+enum BlockReason {
+  DANO_FISICO
+  LIMPIEZA
+  AUDITORIA
+  INVENTARIO_CICLICO
+  CUARENTENA
+  PRODUCTO_OBSERVADO
+  SEGURIDAD
+  MANTENIMIENTO
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  name               String
+  email              String              @unique
+  password           String
+  role               Role
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  movements          LocationMovement[]
+  blockLogs          LocationBlockLog[]
+}
+
+model Warehouse {
+  id                 String              @id @default(cuid())
+  code               String              @unique
+  name               String
+  country            String
+  city               String
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  zones              Zone[]
+  locations          Location[]
+}
+
+model Zone {
+  id                 String              @id @default(cuid())
+  warehouseId        String
+  code               String
+  name               String
+  type               ZoneType
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  warehouse          Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  locations          Location[]
+
+  @@unique([warehouseId, code])
+}
+
+model Location {
+  id                 String              @id @default(cuid())
+  warehouseId        String
+  zoneId             String
+  locationCode       String              @unique
+  aisle              String?
+  rack               String?
+  level              String?
+  position           String?
+  locationType       LocationType
+  status             LocationStatus
+  maxBoxes           Int?
+  maxWeightKg        Float?
+  maxVolumeM3        Float?
+  coordinateX        Float               @default(0)
+  coordinateY        Float               @default(0)
+  width              Float               @default(180)
+  height             Float               @default(64)
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  warehouse          Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  zone               Zone                @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  inventory          InventoryLocation[]
+  originMovements    LocationMovement[]  @relation("OriginMovements")
+  destinationMovements LocationMovement[] @relation("DestinationMovements")
+  blockLogs          LocationBlockLog[]
+}
+
+model InventoryLocation {
+  id                 String              @id @default(cuid())
+  locationId         String
+  sku                String
+  description        String
+  lot                String?
+  expirationDate     DateTime?
+  palletCode         String?
+  quantity           Float
+  unit               String
+  status             InventoryStatus
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  location           Location            @relation(fields: [locationId], references: [id], onDelete: Cascade)
+}
+
+model LocationMovement {
+  id                 String              @id @default(cuid())
+  originLocationId   String?
+  destinationLocationId String?
+  sku                String
+  lot                String?
+  palletCode         String?
+  quantity           Float
+  movementType       MovementType
+  reason             String
+  userId             String
+  createdAt          DateTime            @default(now())
+  originLocation     Location?           @relation("OriginMovements", fields: [originLocationId], references: [id], onDelete: SetNull)
+  destinationLocation Location?          @relation("DestinationMovements", fields: [destinationLocationId], references: [id], onDelete: SetNull)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model LocationBlockLog {
+  id                 String              @id @default(cuid())
+  locationId         String
+  previousStatus     LocationStatus
+  newStatus          LocationStatus
+  reason             BlockReason
+  comment            String?
+  userId             String
+  createdAt          DateTime            @default(now())
+  location           Location            @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
