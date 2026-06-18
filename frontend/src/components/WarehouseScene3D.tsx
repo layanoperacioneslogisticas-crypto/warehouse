@@ -141,11 +141,11 @@ export function WarehouseScene3D({
       controls.dispose();
       renderer.dispose();
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
-      scene.traverse((object) => {
+      scene.traverse((object: THREE.Object3D) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
           if (Array.isArray(object.material)) {
-            object.material.forEach((material) => material.dispose());
+            object.material.forEach((material: THREE.Material) => material.dispose());
           } else {
             object.material.dispose();
           }
