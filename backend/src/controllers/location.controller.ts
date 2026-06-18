@@ -26,7 +26,7 @@ export async function list(req: Request, res: Response) {
 }
 
 export async function get(req: Request, res: Response) {
-  res.json(await getLocation(req.params.id));
+  res.json(await getLocation(String(req.params.id)));
 }
 
 export async function create(req: Request, res: Response) {
@@ -34,11 +34,11 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function update(req: Request, res: Response) {
-  res.json(await updateLocation(req.params.id, locationSchema.partial().parse(req.body)));
+  res.json(await updateLocation(String(req.params.id), locationSchema.partial().parse(req.body)));
 }
 
 export async function remove(req: Request, res: Response) {
-  res.json(await removeLocation(req.params.id));
+  res.json(await removeLocation(String(req.params.id)));
 }
 
 export async function upload(req: Request, res: Response) {
@@ -53,23 +53,22 @@ export async function upload(req: Request, res: Response) {
 
 export async function block(req: AuthRequest, res: Response) {
   const payload = locationBlockSchema.parse(req.body);
-  res.json(await blockLocation(req.params.id, req.user!.id, payload.reason, payload.comment));
+  res.json(await blockLocation(String(req.params.id), req.user!.id, payload.reason, payload.comment));
 }
 
 export async function unblock(req: Request, res: Response) {
-  res.json(await unblockLocation(req.params.id));
+  res.json(await unblockLocation(String(req.params.id)));
 }
 
 export async function coordinates(req: Request, res: Response) {
   const payload = locationCoordinatesSchema.parse(req.body);
-  res.json(await updateCoordinates(req.params.id, payload.coordinateX, payload.coordinateY));
+  res.json(await updateCoordinates(String(req.params.id), payload.coordinateX, payload.coordinateY));
 }
 
 export async function qr(req: Request, res: Response) {
-  res.json(await getLocationQrPayload(req.params.id));
+  res.json(await getLocationQrPayload(String(req.params.id)));
 }
 
 export async function layout(req: Request, res: Response) {
-  res.json(await getLayoutByWarehouse(req.params.warehouseId));
+  res.json(await getLayoutByWarehouse(String(req.params.warehouseId)));
 }
-

@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { Secret, SignOptions } from "jsonwebtoken";
 import { Role } from "@prisma/client";
 import { env } from "../config/env.js";
 
@@ -9,10 +9,11 @@ export interface JwtPayload {
 }
 
 export function signToken(payload: JwtPayload) {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+  const secret: Secret = env.JWT_SECRET;
+  const options: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as SignOptions["expiresIn"] };
+  return jwt.sign(payload, secret, options);
 }
 
 export function verifyToken(token: string) {
-  return jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  return jwt.verify(token, env.JWT_SECRET as Secret) as JwtPayload;
 }
-

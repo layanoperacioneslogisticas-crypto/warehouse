@@ -171,10 +171,9 @@ export async function ensureLocationAcceptsInventory(locationId: string) {
     throw new HttpError(404, "Ubicacion no encontrada.");
   }
 
-  if ([LocationStatus.BLOQUEADO, LocationStatus.DANADO].includes(location.status)) {
+  if (location.status === LocationStatus.BLOQUEADO || location.status === LocationStatus.DANADO) {
     throw new HttpError(400, "La ubicacion no puede recibir inventario.");
   }
 
   return location;
 }
-

@@ -4,7 +4,7 @@ import { assignInventory, deleteInventory, getInventoryByLocation, moveInventory
 import { inventoryAssignSchema, inventoryMoveSchema } from "../validators/inventory.validator.js";
 
 export async function byLocation(req: Request, res: Response) {
-  res.json(await getInventoryByLocation(req.params.locationId));
+  res.json(await getInventoryByLocation(String(req.params.locationId)));
 }
 
 export async function assign(req: AuthRequest, res: Response) {
@@ -16,6 +16,5 @@ export async function move(req: AuthRequest, res: Response) {
 }
 
 export async function remove(req: Request, res: Response) {
-  res.json(await deleteInventory(req.params.id));
+  res.json(await deleteInventory(String(req.params.id)));
 }
-
