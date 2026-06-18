@@ -9,6 +9,7 @@ import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { VisualMapPage } from "./pages/VisualMapPage";
 import { WarehousesPage } from "./pages/WarehousesPage";
+import { Warehouse3DPage } from "./pages/Warehouse3DPage";
 import { ZonesPage } from "./pages/ZonesPage";
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/zones" element={<ZonesPage />} />
         <Route path="/locations" element={<LocationsPage />} />
         <Route path="/visual-map" element={<VisualMapPage />} />
+        <Route path="/warehouse-3d" element={<Warehouse3DPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/movements" element={<MovementsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
@@ -44,4 +46,3 @@ export default function App() {
     </Routes>
   );
 }
-

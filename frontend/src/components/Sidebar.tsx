@@ -14,6 +14,7 @@ import {
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: FiHome },
   { to: "/visual-map", label: "Mapa Visual", icon: FiMap },
+  { to: "/warehouse-3d", label: "Vista 3D", icon: FiBox },
   { to: "/warehouses", label: "Bodegas", icon: FiTruck },
   { to: "/zones", label: "Zonas", icon: FiGrid },
   { to: "/locations", label: "Ubicaciones", icon: FiBox },
@@ -40,4 +41,3 @@ export function Sidebar() {
     </aside>
   );
 }
-
