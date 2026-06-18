@@ -16,3 +16,4 @@ frontend/dist/
 backend/generated/
 tmp/
 *.log
+*.tsbuildinfo

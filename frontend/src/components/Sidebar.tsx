@@ -18,7 +18,7 @@ const links = [
   { to: "/warehouse-3d", label: "Layout 3D", icon: TbCube3dSphere },
   { to: "/inventory", label: "Inventario", icon: FiLayers },
   { to: "/movements", label: "Rutas", icon: FiMove },
-  { to: "/visual-map", label: "Mapas de Calor", icon: FiMap },
+  { to: "/visual-map", label: "Mapas de calor", icon: FiMap },
   { to: "/locations", label: "Ocupabilidad", icon: FiBox },
   { to: "/reports", label: "Reportes", icon: FiBarChart2 },
   { to: "/zones", label: "Zonas", icon: FiGrid },
@@ -59,7 +59,7 @@ export function Sidebar() {
             <strong>Monitoreo</strong>
           </div>
           <small className="text-muted">
-            La operación está activa. Usa la vista 3D para revisar zonas, racks y ocupación.
+            La operación está activa. Usa la vista 3D para revisar racks, zonas y ocupación.
           </small>
         </div>
       </div>

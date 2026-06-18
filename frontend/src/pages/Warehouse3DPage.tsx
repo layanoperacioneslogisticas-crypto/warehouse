@@ -25,19 +25,30 @@ export function Warehouse3DPage() {
     queryFn: warehouseApi.list
   });
 
+  const effectiveWarehouseId = warehouseId || warehouses[0]?.id || "";
+
   const { data: layout = [] } = useQuery({
-    queryKey: ["layout-3d", warehouseId],
-    queryFn: () => locationApi.layout(warehouseId),
-    enabled: Boolean(warehouseId)
+    queryKey: ["layout-3d", effectiveWarehouseId],
+    queryFn: () => locationApi.layout(effectiveWarehouseId),
+    enabled: Boolean(effectiveWarehouseId)
   });
 
-  const visibleLocations = useMemo(() => {
-    return layout.filter((location) => !zoneFilter || location.zone?.code === zoneFilter);
-  }, [layout, zoneFilter]);
+  const visibleLocations = useMemo(
+    () => layout.filter((location) => !zoneFilter || location.zone?.code === zoneFilter),
+    [layout, zoneFilter]
+  );
 
-  const zones = useMemo(() => {
-    return Array.from(new Set(layout.map((location) => location.zone?.code).filter(Boolean))) as string[];
-  }, [layout]);
+  const zones = useMemo(
+    () => Array.from(new Set(layout.map((location) => location.zone?.code).filter(Boolean))) as string[],
+    [layout]
+  );
+
+  const occupiedCount = visibleLocations.filter((item) => item.status === "OCUPADO").length;
+  const freeCount = visibleLocations.filter((item) => item.status === "LIBRE").length;
+  const blockedCount = visibleLocations.filter((item) => item.status === "BLOQUEADO").length;
+  const occupancyPercent = visibleLocations.length
+    ? Math.round((occupiedCount / visibleLocations.length) * 100)
+    : 0;
 
   const handleSelectLocation = async (location: Location) => {
     setSelectedLocation(location);
@@ -48,7 +59,7 @@ export function Warehouse3DPage() {
   return (
     <div className="row g-4">
       <div className="col-xl-2">
-        <div className="side-card">
+        <div className="side-card mb-3">
           <h5 className="mb-3">Leyenda</h5>
           <ul className="legend-list">
             {statusLegend.map((item) => (
@@ -61,19 +72,14 @@ export function Warehouse3DPage() {
             ))}
           </ul>
         </div>
-      </div>
 
-      <div className="col-xl-7">
-        <div className="page-panel p-3">
-          <div className="page-header px-2 pt-2">
+        <div className="side-card">
+          <h6 className="mb-3">Filtros del layout</h6>
+          <div className="d-flex flex-column gap-3">
             <div>
-              <div className="page-title" style={{ fontSize: "1.65rem" }}>Layout 3D del almacén</div>
-              <p className="page-copy">Racks, zonas y ubicaciones modeladas con interacción desde navegador.</p>
-            </div>
-            <div className="d-flex gap-2 flex-wrap">
+              <label className="form-label">Bodega</label>
               <select
                 className="form-select"
-                style={{ minWidth: 220 }}
                 value={warehouseId}
                 onChange={(event) => {
                   setWarehouseId(event.target.value);
@@ -81,19 +87,22 @@ export function Warehouse3DPage() {
                   setInventory([]);
                 }}
               >
-                <option value="">Almacén Principal</option>
+                <option value="">Almacén principal</option>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.code} - {warehouse.name}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="form-label">Zona</label>
               <select
                 className="form-select"
-                style={{ minWidth: 180 }}
                 value={zoneFilter}
                 onChange={(event) => setZoneFilter(event.target.value)}
-                disabled={!warehouseId}
+                disabled={!effectiveWarehouseId}
               >
                 <option value="">Todas las zonas</option>
                 {zones.map((zoneCode) => (
@@ -102,6 +111,37 @@ export function Warehouse3DPage() {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="col-xl-7">
+        <div className="page-panel p-3">
+          <div className="page-header px-2 pt-2">
+            <div>
+              <div className="page-kicker">Warehouse 3D</div>
+              <div className="page-title" style={{ fontSize: "1.7rem" }}>Layout 3D del almacén</div>
+              <p className="page-copy">Racks, zonas y ubicaciones modeladas con interacción avanzada en navegador.</p>
+            </div>
+          </div>
+
+          <div className="scene-kpi-strip mb-3">
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{visibleLocations.length}</div>
+              <div className="scene-kpi-label">Ubicaciones visibles</div>
+            </div>
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{occupiedCount}</div>
+              <div className="scene-kpi-label">Ocupadas</div>
+            </div>
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{freeCount}</div>
+              <div className="scene-kpi-label">Disponibles</div>
+            </div>
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{occupancyPercent}%</div>
+              <div className="scene-kpi-label">Ocupación</div>
             </div>
           </div>
 
@@ -129,28 +169,32 @@ export function Warehouse3DPage() {
         <LocationSidePanel location={selectedLocation} inventory={inventory} />
 
         <div className="side-card">
-          <h5 className="mb-3">Ocupabilidad por Zona</h5>
+          <h5 className="mb-3">Ocupabilidad por zona</h5>
           <div className="donut-shell">
             <div className="donut-ring">
               <div className="donut-center">
                 <div>
-                  <div style={{ fontSize: "2rem", lineHeight: 1 }}>72%</div>
+                  <div style={{ fontSize: "2rem", lineHeight: 1 }}>{occupancyPercent}%</div>
                   <small className="text-muted">Promedio</small>
                 </div>
               </div>
             </div>
           </div>
+
           <div className="d-flex flex-column gap-2 mt-3">
-            {["A", "B", "C", "D", "F"].map((zone, index) => {
-              const values = [85, 72, 65, 58, 48];
+            {(zones.length ? zones : ["A", "B", "C", "D"]).slice(0, 5).map((zone, index) => {
+              const zoneLocations = visibleLocations.filter((item) => item.zone?.code === zone);
+              const zoneOccupied = zoneLocations.filter((item) => item.status === "OCUPADO").length;
+              const zonePercent = zoneLocations.length ? Math.round((zoneOccupied / zoneLocations.length) * 100) : [85, 72, 65, 58, 48][index] ?? 0;
+
               return (
                 <div key={zone}>
                   <div className="d-flex justify-content-between small mb-1">
                     <span>Zona {zone}</span>
-                    <span>{values[index]}%</span>
+                    <span>{zonePercent}%</span>
                   </div>
                   <div className="mini-progress">
-                    <span style={{ width: `${values[index]}%` }} />
+                    <span style={{ width: `${zonePercent}%` }} />
                   </div>
                 </div>
               );
@@ -159,12 +203,12 @@ export function Warehouse3DPage() {
         </div>
 
         <div className="side-card">
-          <h5 className="mb-3">Resumen General</h5>
+          <h5 className="mb-3">Resumen general</h5>
           <ul className="info-list">
             <li><span>Ubicaciones totales</span><strong>{visibleLocations.length}</strong></li>
-            <li><span>Ubicaciones ocupadas</span><strong>{visibleLocations.filter((item) => item.status === "OCUPADO").length}</strong></li>
-            <li><span>Disponibles</span><strong>{visibleLocations.filter((item) => item.status === "LIBRE").length}</strong></li>
-            <li><span>Bloqueadas</span><strong>{visibleLocations.filter((item) => item.status === "BLOQUEADO").length}</strong></li>
+            <li><span>Ubicaciones ocupadas</span><strong>{occupiedCount}</strong></li>
+            <li><span>Disponibles</span><strong>{freeCount}</strong></li>
+            <li><span>Bloqueadas</span><strong>{blockedCount}</strong></li>
           </ul>
         </div>
       </div>

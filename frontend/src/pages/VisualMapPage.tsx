@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import ReactFlow, { Background, Controls, MiniMap, Node, NodeTypes } from "react-flow-renderer";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { inventoryApi, locationApi, warehouseApi } from "../api/modules";
-import { Location, InventoryLocation } from "../types";
-import { VisualLocationNode } from "../components/VisualLocationNode";
+import { InventoryLocation, Location } from "../types";
 import { LocationSidePanel } from "../components/LocationSidePanel";
+import { VisualLocationNode } from "../components/VisualLocationNode";
 
 const nodeTypes: NodeTypes = {
   locationNode: VisualLocationNode
@@ -20,10 +20,12 @@ export function VisualMapPage() {
     queryFn: warehouseApi.list
   });
 
+  const effectiveWarehouseId = warehouseId || warehouses[0]?.id || "";
+
   const { data: layout = [] } = useQuery({
-    queryKey: ["layout", warehouseId],
-    queryFn: () => locationApi.layout(warehouseId),
-    enabled: Boolean(warehouseId)
+    queryKey: ["layout", effectiveWarehouseId],
+    queryFn: () => locationApi.layout(effectiveWarehouseId),
+    enabled: Boolean(effectiveWarehouseId)
   });
 
   const coordinatesMutation = useMutation({
@@ -67,8 +69,9 @@ export function VisualMapPage() {
         <div className="page-panel p-4">
           <div className="page-header">
             <div>
-              <h2>Mapa Visual</h2>
-              <div className="text-muted">Ubicaciones coloreadas por estado y arrastrables.</div>
+              <div className="page-kicker">Plano táctico</div>
+              <h2 className="mb-1">Mapa visual</h2>
+              <div className="text-muted">Ubicaciones coloreadas por estado y ajustables por arrastre.</div>
             </div>
             <div style={{ minWidth: 260 }}>
               <select
@@ -76,7 +79,7 @@ export function VisualMapPage() {
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
               >
-                <option value="">Selecciona una bodega</option>
+                <option value="">Bodega principal</option>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.code} - {warehouse.name}
@@ -85,26 +88,48 @@ export function VisualMapPage() {
               </select>
             </div>
           </div>
-          <div style={{ height: 620 }}>
-            <ReactFlow
-              nodes={nodes}
-              edges={[]}
-              nodeTypes={nodeTypes}
-              onNodeClick={handleNodeClick}
-              onNodeDragStop={handleNodeDragStop}
-              fitView
-            >
-              <Background />
-              <MiniMap />
-              <Controls />
-            </ReactFlow>
+
+          <div className="scene-kpi-strip mb-3">
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{layout.length}</div>
+              <div className="scene-kpi-label">Ubicaciones</div>
+            </div>
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{layout.filter((item) => item.status === "OCUPADO").length}</div>
+              <div className="scene-kpi-label">Ocupadas</div>
+            </div>
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{layout.filter((item) => item.status === "LIBRE").length}</div>
+              <div className="scene-kpi-label">Libres</div>
+            </div>
+            <div className="scene-kpi">
+              <div className="scene-kpi-value">{layout.filter((item) => item.status === "BLOQUEADO").length}</div>
+              <div className="scene-kpi-label">Bloqueadas</div>
+            </div>
+          </div>
+
+          <div className="scene-wrapper p-2">
+            <div style={{ height: 640 }}>
+              <ReactFlow
+                nodes={nodes}
+                edges={[]}
+                nodeTypes={nodeTypes}
+                onNodeClick={handleNodeClick}
+                onNodeDragStop={handleNodeDragStop}
+                fitView
+              >
+                <Background color="rgba(122, 152, 191, 0.16)" gap={24} />
+                <MiniMap />
+                <Controls />
+              </ReactFlow>
+            </div>
           </div>
         </div>
       </div>
+
       <div className="col-xl-3">
         <LocationSidePanel location={selectedLocation} inventory={inventory} />
       </div>
     </div>
   );
 }
-

@@ -13,19 +13,70 @@ export function DashboardPage() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      <div className="page-header">
-        <div>
-          <div className="text-muted small mb-2">Centro de control logístico</div>
-          <div className="page-title">Dashboard operativo</div>
-          <p className="page-copy">
-            Monitorea capacidad, ocupación y estados críticos del almacén con una visualización ejecutiva.
-          </p>
+      <section className="hero-panel">
+        <div className="hero-grid">
+          <div>
+            <div className="page-kicker">Centro de control logístico</div>
+            <h1 className="page-title">Dashboard operativo</h1>
+            <p className="page-copy">
+              Supervisa capacidad, ocupación y estados críticos del almacén con una interfaz
+              orientada a operación y monitoreo en tiempo real.
+            </p>
+
+            <div className="hero-chip-row mt-4">
+              <div className="glass-pill">
+                <span className="status-dot" />
+                Sistema en línea
+              </div>
+              <div className="hero-chip">Vista 3D conectada al backend</div>
+              <div className="hero-chip">Datos demo listos para validación</div>
+            </div>
+
+            <div className="hero-stats">
+              <div className="hero-stat">
+                <div className="hero-stat-value">{data?.totalLocations ?? 0}</div>
+                <div className="hero-stat-label">Ubicaciones modeladas</div>
+              </div>
+              <div className="hero-stat">
+                <div className="hero-stat-value">{occupancy.toFixed(1)}%</div>
+                <div className="hero-stat-label">Ocupabilidad global</div>
+              </div>
+              <div className="hero-stat">
+                <div className="hero-stat-value">{data?.blockedLocations ?? 0}</div>
+                <div className="hero-stat-label">Riesgos operativos</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="hero-illustration d-flex flex-column justify-content-end p-4">
+            <div className="page-panel-soft p-3">
+              <div className="small text-muted mb-2">Estado de plataforma</div>
+              <div className="status-grid">
+                <div className="status-card">
+                  <div className="text-muted small">Bodega principal</div>
+                  <div className="fw-semibold mt-1">Activa</div>
+                </div>
+                <div className="status-card">
+                  <div className="text-muted small">Motor 3D</div>
+                  <div className="fw-semibold mt-1">Three.js Online</div>
+                </div>
+                <div className="status-card">
+                  <div className="text-muted small">Ubicaciones libres</div>
+                  <div className="fw-semibold mt-1">{data?.freeLocations ?? 0}</div>
+                </div>
+                <div className="status-card">
+                  <div className="text-muted small">Ubicaciones ocupadas</div>
+                  <div className="fw-semibold mt-1">{data?.occupiedLocations ?? 0}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
       <div className="row g-3">
         <div className="col-md-6 col-xl-3">
-          <StatCard label="Ubicaciones Totales" value={data?.totalLocations ?? 0} icon={FiBox} helper="Capacidad modelada" />
+          <StatCard label="Ubicaciones totales" value={data?.totalLocations ?? 0} icon={FiBox} helper="Capacidad modelada" />
         </div>
         <div className="col-md-6 col-xl-3">
           <StatCard label="Disponibles" value={data?.freeLocations ?? 0} icon={FiCheckCircle} helper="Listas para recibir stock" />
@@ -56,7 +107,7 @@ export function DashboardPage() {
             <div className="page-header">
               <div>
                 <h4 className="mb-1">Ocupabilidad por zona</h4>
-                <p className="page-copy">Distribución de capacidad usada en las zonas más relevantes.</p>
+                <p className="page-copy">Distribución visual de la capacidad usada en las zonas más relevantes.</p>
               </div>
             </div>
 
@@ -92,7 +143,7 @@ export function DashboardPage() {
 
         <div className="col-xl-4">
           <div className="side-card h-100">
-            <h5 className="mb-4">Resumen General</h5>
+            <h5 className="mb-4">Resumen general</h5>
             <ul className="info-list">
               <li><span>Ubicaciones totales</span><strong>{data?.totalLocations ?? 0}</strong></li>
               <li><span>Ubicaciones ocupadas</span><strong>{data?.occupiedLocations ?? 0}</strong></li>

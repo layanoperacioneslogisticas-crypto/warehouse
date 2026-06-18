@@ -11,12 +11,12 @@ export function LocationSidePanel({
   if (!location) {
     return (
       <div className="side-card">
-        <h5 className="mb-2">Información de Ubicación</h5>
+        <h5 className="mb-2">Información de ubicación</h5>
         <div className="empty-state">
           <div>
             <div className="fw-semibold mb-2">Selecciona una ubicación</div>
             <div className="small text-muted">
-              Haz clic sobre un rack o posición para abrir su detalle operativo.
+              Haz clic sobre un rack o una posición para abrir su detalle operativo.
             </div>
           </div>
         </div>
@@ -27,7 +27,7 @@ export function LocationSidePanel({
   return (
     <div className="d-flex flex-column gap-3">
       <div className="side-card">
-        <h5 className="mb-3">Información de Ubicación</h5>
+        <h5 className="mb-3">Información de ubicación</h5>
         <div className="fs-3 fw-bold text-primary mb-2">{location.locationCode}</div>
         <div className="mb-3">
           <LocationStatusBadge status={location.status} />
@@ -39,7 +39,7 @@ export function LocationSidePanel({
           <li><span>Tipo</span><strong>{location.locationType}</strong></li>
           <li><span>Capacidad cajas</span><strong>{location.maxBoxes ?? "-"}</strong></li>
           <li><span>Capacidad kg</span><strong>{location.maxWeightKg ?? "-"}</strong></li>
-          <li><span>Capacidad m3</span><strong>{location.maxVolumeM3 ?? "-"}</strong></li>
+          <li><span>Capacidad m³</span><strong>{location.maxVolumeM3 ?? "-"}</strong></li>
         </ul>
       </div>
 

@@ -5,7 +5,7 @@ export function Navbar() {
   const { data } = useAuth();
   const initials = (data?.name || "LP")
     .split(" ")
-    .map((chunk) => chunk[0])
+    .map((chunk: string) => chunk[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
