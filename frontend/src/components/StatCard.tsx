@@ -10,13 +10,14 @@ interface StatCardProps {
 export function StatCard({ label, value, icon: Icon, helper }: StatCardProps) {
   return (
     <div className="metric-tile">
-      <div className="text-muted">
-        <Icon size={20} />
+      <div className="metric-header">
+        <div className="metric-label">{label}</div>
+        <div className="metric-icon">
+          <Icon size={18} />
+        </div>
       </div>
-      <h3>{value}</h3>
-      <div className="fw-semibold">{label}</div>
-      {helper ? <small className="text-muted">{helper}</small> : null}
+      <div className="metric-value">{value}</div>
+      {helper ? <div className="metric-helper">{helper}</div> : null}
     </div>
   );
 }
-

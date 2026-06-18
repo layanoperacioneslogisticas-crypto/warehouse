@@ -1,20 +1,17 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { FiEdit3, FiLayers, FiMaximize2, FiMove, FiRotateCw, FiSearch } from "react-icons/fi";
 import { inventoryApi, locationApi, warehouseApi } from "../api/modules";
 import { InventoryLocation, Location } from "../types";
 import { LocationSidePanel } from "../components/LocationSidePanel";
 import { WarehouseScene3D } from "../components/WarehouseScene3D";
 
 const statusLegend = [
-  { status: "LIBRE", color: "#16a34a" },
-  { status: "OCUPADO", color: "#2563eb" },
-  { status: "BLOQUEADO", color: "#dc2626" },
-  { status: "DANADO", color: "#334155" },
-  { status: "CUARENTENA", color: "#facc15" },
-  { status: "PAV", color: "#f97316" },
-  { status: "NPI", color: "#7c3aed" },
-  { status: "VALIDACION", color: "#06b6d4" },
-  { status: "RESERVADO", color: "#a855f7" }
+  { status: "Disponible", color: "#22c55e" },
+  { status: "Ocupado", color: "#3b82f6" },
+  { status: "Próximo a vencer", color: "#f59e0b" },
+  { status: "Bloqueado", color: "#ef4444" },
+  { status: "Vacío", color: "#d1d5db" }
 ];
 
 export function Warehouse3DPage() {
@@ -50,19 +47,33 @@ export function Warehouse3DPage() {
 
   return (
     <div className="row g-4">
-      <div className="col-xl-9">
-        <div className="page-panel p-4">
-          <div className="page-header">
+      <div className="col-xl-2">
+        <div className="side-card">
+          <h5 className="mb-3">Leyenda</h5>
+          <ul className="legend-list">
+            {statusLegend.map((item) => (
+              <li key={item.status} className="legend-item">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="legend-swatch" style={{ background: item.color }} />
+                  <span>{item.status}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="col-xl-7">
+        <div className="page-panel p-3">
+          <div className="page-header px-2 pt-2">
             <div>
-              <h2>Almacen 3D</h2>
-              <div className="text-muted">
-                Visualizacion tridimensional de racks, piso y estados de ubicacion usando Three.js.
-              </div>
+              <div className="page-title" style={{ fontSize: "1.65rem" }}>Layout 3D del almacén</div>
+              <p className="page-copy">Racks, zonas y ubicaciones modeladas con interacción desde navegador.</p>
             </div>
             <div className="d-flex gap-2 flex-wrap">
               <select
                 className="form-select"
-                style={{ minWidth: 260 }}
+                style={{ minWidth: 220 }}
                 value={warehouseId}
                 onChange={(event) => {
                   setWarehouseId(event.target.value);
@@ -70,7 +81,7 @@ export function Warehouse3DPage() {
                   setInventory([]);
                 }}
               >
-                <option value="">Selecciona una bodega</option>
+                <option value="">Almacén Principal</option>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.code} - {warehouse.name}
@@ -87,40 +98,75 @@ export function Warehouse3DPage() {
                 <option value="">Todas las zonas</option>
                 {zones.map((zoneCode) => (
                   <option key={zoneCode} value={zoneCode}>
-                    {zoneCode}
+                    Zona {zoneCode}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="d-flex flex-wrap gap-3 mb-3">
-            {statusLegend.map((item) => (
-              <span key={item.status} className="d-inline-flex align-items-center gap-2 small text-muted">
-                <span
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: 999,
-                    background: item.color,
-                    display: "inline-block"
-                  }}
-                />
-                {item.status}
-              </span>
-            ))}
+          <div className="scene-wrapper">
+            <WarehouseScene3D
+              locations={visibleLocations}
+              selectedLocationId={selectedLocation?.id}
+              onSelectLocation={handleSelectLocation}
+            />
           </div>
 
-          <WarehouseScene3D
-            locations={visibleLocations}
-            selectedLocationId={selectedLocation?.id}
-            onSelectLocation={handleSelectLocation}
-          />
+          <div className="scene-toolbar mt-3">
+            <button className="scene-tool"><FiRotateCw size={18} /><small>Rotar</small></button>
+            <button className="scene-tool"><FiMove size={18} /><small>Mover</small></button>
+            <button className="scene-tool"><FiSearch size={18} /><small>Zoom</small></button>
+            <button className="scene-tool"><FiEdit3 size={18} /><small>Medir</small></button>
+            <button className="scene-tool"><FiEdit3 size={18} /><small>Etiquetas</small></button>
+            <button className="scene-tool"><FiLayers size={18} /><small>Capas</small></button>
+            <button className="scene-tool"><FiMaximize2 size={18} /><small>Pantalla</small></button>
+          </div>
         </div>
       </div>
 
-      <div className="col-xl-3">
+      <div className="col-xl-3 d-flex flex-column gap-3">
         <LocationSidePanel location={selectedLocation} inventory={inventory} />
+
+        <div className="side-card">
+          <h5 className="mb-3">Ocupabilidad por Zona</h5>
+          <div className="donut-shell">
+            <div className="donut-ring">
+              <div className="donut-center">
+                <div>
+                  <div style={{ fontSize: "2rem", lineHeight: 1 }}>72%</div>
+                  <small className="text-muted">Promedio</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="d-flex flex-column gap-2 mt-3">
+            {["A", "B", "C", "D", "F"].map((zone, index) => {
+              const values = [85, 72, 65, 58, 48];
+              return (
+                <div key={zone}>
+                  <div className="d-flex justify-content-between small mb-1">
+                    <span>Zona {zone}</span>
+                    <span>{values[index]}%</span>
+                  </div>
+                  <div className="mini-progress">
+                    <span style={{ width: `${values[index]}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="side-card">
+          <h5 className="mb-3">Resumen General</h5>
+          <ul className="info-list">
+            <li><span>Ubicaciones totales</span><strong>{visibleLocations.length}</strong></li>
+            <li><span>Ubicaciones ocupadas</span><strong>{visibleLocations.filter((item) => item.status === "OCUPADO").length}</strong></li>
+            <li><span>Disponibles</span><strong>{visibleLocations.filter((item) => item.status === "LIBRE").length}</strong></li>
+            <li><span>Bloqueadas</span><strong>{visibleLocations.filter((item) => item.status === "BLOQUEADO").length}</strong></li>
+          </ul>
+        </div>
       </div>
     </div>
   );

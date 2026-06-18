@@ -8,9 +8,10 @@ export function AppLayout() {
       <Sidebar />
       <main className="main-shell">
         <Navbar />
-        <Outlet />
+        <div className="content-shell">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
 }
-
