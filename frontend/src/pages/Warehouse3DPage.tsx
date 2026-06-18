@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FiEdit3, FiLayers, FiMaximize2, FiMove, FiRotateCw, FiSearch } from "react-icons/fi";
 import { inventoryApi, locationApi, warehouseApi } from "../api/modules";
@@ -19,6 +19,9 @@ export function Warehouse3DPage() {
   const [selectedLocation, setSelectedLocation] = useState<Location | undefined>();
   const [inventory, setInventory] = useState<InventoryLocation[]>([]);
   const [zoneFilter, setZoneFilter] = useState("");
+  const [sceneMode, setSceneMode] = useState<"overview" | "focus" | "inspect" | "pan">("overview");
+  const [showLabels, setShowLabels] = useState(true);
+  const [showDecorations, setShowDecorations] = useState(true);
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ["warehouses"],
@@ -32,6 +35,12 @@ export function Warehouse3DPage() {
     queryFn: () => locationApi.layout(effectiveWarehouseId),
     enabled: Boolean(effectiveWarehouseId)
   });
+
+  useEffect(() => {
+    if (!warehouseId && warehouses[0]?.id) {
+      setWarehouseId(warehouses[0].id);
+    }
+  }, [warehouseId, warehouses]);
 
   const visibleLocations = useMemo(
     () => layout.filter((location) => !zoneFilter || location.zone?.code === zoneFilter),
@@ -50,10 +59,36 @@ export function Warehouse3DPage() {
     ? Math.round((occupiedCount / visibleLocations.length) * 100)
     : 0;
 
+  useEffect(() => {
+    if (!visibleLocations.length) return;
+
+    const currentVisible = selectedLocation && visibleLocations.some((item) => item.id === selectedLocation.id);
+    const nextLocation = currentVisible ? selectedLocation : visibleLocations[0];
+
+    if (nextLocation && nextLocation.id !== selectedLocation?.id) {
+      setSelectedLocation(nextLocation);
+      inventoryApi.byLocation(nextLocation.id).then(setInventory).catch(() => setInventory([]));
+    }
+  }, [visibleLocations, selectedLocation]);
+
   const handleSelectLocation = async (location: Location) => {
     setSelectedLocation(location);
-    const rows = await inventoryApi.byLocation(location.id);
-    setInventory(rows);
+    try {
+      const rows = await inventoryApi.byLocation(location.id);
+      setInventory(rows);
+    } catch {
+      setInventory([]);
+    }
+    setSceneMode("focus");
+  };
+
+  const handleFullscreen = async () => {
+    const element = document.documentElement;
+    if (!document.fullscreenElement) {
+      await element.requestFullscreen?.();
+      return;
+    }
+    await document.exitFullscreen?.();
   };
 
   return (
@@ -149,18 +184,59 @@ export function Warehouse3DPage() {
             <WarehouseScene3D
               locations={visibleLocations}
               selectedLocationId={selectedLocation?.id}
+              sceneMode={sceneMode}
+              showLabels={showLabels}
+              showDecorations={showDecorations}
               onSelectLocation={handleSelectLocation}
             />
           </div>
 
           <div className="scene-toolbar mt-3">
-            <button className="scene-tool"><FiRotateCw size={18} /><small>Rotar</small></button>
-            <button className="scene-tool"><FiMove size={18} /><small>Mover</small></button>
-            <button className="scene-tool"><FiSearch size={18} /><small>Zoom</small></button>
-            <button className="scene-tool"><FiEdit3 size={18} /><small>Medir</small></button>
-            <button className="scene-tool"><FiEdit3 size={18} /><small>Etiquetas</small></button>
-            <button className="scene-tool"><FiLayers size={18} /><small>Capas</small></button>
-            <button className="scene-tool"><FiMaximize2 size={18} /><small>Pantalla</small></button>
+            <button
+              type="button"
+              className={`scene-tool ${sceneMode === "overview" ? "active" : ""}`}
+              onClick={() => setSceneMode("overview")}
+            >
+              <FiRotateCw size={18} /><small>Rotar</small>
+            </button>
+            <button
+              type="button"
+              className={`scene-tool ${sceneMode === "pan" ? "active" : ""}`}
+              onClick={() => setSceneMode((current) => (current === "pan" ? "overview" : "pan"))}
+            >
+              <FiMove size={18} /><small>Mover</small>
+            </button>
+            <button
+              type="button"
+              className={`scene-tool ${sceneMode === "focus" ? "active" : ""}`}
+              onClick={() => setSceneMode("focus")}
+            >
+              <FiSearch size={18} /><small>Zoom</small>
+            </button>
+            <button
+              type="button"
+              className={`scene-tool ${sceneMode === "inspect" ? "active" : ""}`}
+              onClick={() => setSceneMode("inspect")}
+            >
+              <FiEdit3 size={18} /><small>Medir</small>
+            </button>
+            <button
+              type="button"
+              className={`scene-tool ${showLabels ? "active" : ""}`}
+              onClick={() => setShowLabels((current) => !current)}
+            >
+              <FiEdit3 size={18} /><small>Etiquetas</small>
+            </button>
+            <button
+              type="button"
+              className={`scene-tool ${showDecorations ? "active" : ""}`}
+              onClick={() => setShowDecorations((current) => !current)}
+            >
+              <FiLayers size={18} /><small>Capas</small>
+            </button>
+            <button type="button" className="scene-tool" onClick={handleFullscreen}>
+              <FiMaximize2 size={18} /><small>Pantalla</small>
+            </button>
           </div>
         </div>
       </div>
@@ -168,8 +244,8 @@ export function Warehouse3DPage() {
       <div className="col-xl-3 d-flex flex-column gap-3">
         <LocationSidePanel location={selectedLocation} inventory={inventory} />
 
-        <div className="side-card">
-          <h5 className="mb-3">Ocupabilidad por zona</h5>
+          <div className="side-card">
+            <h5 className="mb-3">Ocupabilidad por zona</h5>
           <div className="donut-shell">
             <div className="donut-ring">
               <div className="donut-center">
@@ -210,6 +286,9 @@ export function Warehouse3DPage() {
             <li><span>Disponibles</span><strong>{freeCount}</strong></li>
             <li><span>Bloqueadas</span><strong>{blockedCount}</strong></li>
           </ul>
+          <div className="mt-3 small text-muted">
+            Demo activa sobre {selectedLocation?.locationCode || "sin selección"}.
+          </div>
         </div>
       </div>
     </div>

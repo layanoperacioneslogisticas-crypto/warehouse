@@ -18,20 +18,36 @@ const rackColors: Record<LocationStatus, string> = {
 type Props = {
   locations: Location[];
   selectedLocationId?: string;
+  sceneMode?: "overview" | "focus" | "inspect" | "pan";
+  showLabels?: boolean;
+  showDecorations?: boolean;
   onSelectLocation: (location: Location) => void;
 };
 
-export function WarehouseScene3D({ locations, selectedLocationId, onSelectLocation }: Props) {
+export function WarehouseScene3D({
+  locations,
+  selectedLocationId,
+  sceneMode = "overview",
+  showLabels = true,
+  showDecorations = true,
+  onSelectLocation
+}: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const frameRef = useRef<number | null>(null);
   const interactionRef = useRef<Map<string, THREE.Mesh>>(new Map());
   const locationGroupRef = useRef<THREE.Group | null>(null);
+  const decorGroupRef = useRef<THREE.Group | null>(null);
   const raycaster = useRef(new THREE.Raycaster());
   const pointer = useRef(new THREE.Vector2());
+  const defaultsRef = useRef<{
+    position: THREE.Vector3;
+    target: THREE.Vector3;
+    zoom: number;
+  } | null>(null);
 
   const locationMap = useMemo(() => new Map(locations.map((item) => [item.id, item])), [locations]);
 
@@ -43,8 +59,19 @@ export function WarehouseScene3D({ locations, selectedLocationId, onSelectLocati
     scene.background = new THREE.Color("#08121d");
     scene.fog = new THREE.Fog("#08121d", 1600, 4200);
 
-    const camera = new THREE.PerspectiveCamera(42, mount.clientWidth / Math.max(mount.clientHeight, 1), 1, 6000);
-    camera.position.set(1080, 920, 1480);
+    const aspect = mount.clientWidth / Math.max(mount.clientHeight, 1);
+    const frustumHeight = 1100;
+    const camera = new THREE.OrthographicCamera(
+      (-frustumHeight * aspect) / 2,
+      (frustumHeight * aspect) / 2,
+      frustumHeight / 2,
+      -frustumHeight / 2,
+      10,
+      10000
+    );
+    camera.position.set(980, 980, 1380);
+    camera.zoom = 0.78;
+    camera.updateProjectionMatrix();
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -57,10 +84,16 @@ export function WarehouseScene3D({ locations, selectedLocationId, onSelectLocati
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.target.set(580, 110, 340);
-    controls.maxPolarAngle = Math.PI / 2.14;
-    controls.minDistance = 520;
-    controls.maxDistance = 2600;
+    controls.target.set(550, 110, 320);
+    controls.enablePan = true;
+    controls.screenSpacePanning = false;
+    controls.zoomSpeed = 0.85;
+    controls.rotateSpeed = 0.55;
+    controls.panSpeed = 0.7;
+    controls.minZoom = 0.58;
+    controls.maxZoom = 1.32;
+    controls.minPolarAngle = Math.PI / 4.75;
+    controls.maxPolarAngle = Math.PI / 2.22;
 
     const ambient = new THREE.AmbientLight("#d8e7ff", 0.86);
     const keyLight = new THREE.DirectionalLight("#ffffff", 1.7);
@@ -87,11 +120,13 @@ export function WarehouseScene3D({ locations, selectedLocationId, onSelectLocati
     floor.position.y = -8;
     floor.receiveShadow = true;
 
-    scene.add(ambient, keyLight, fillLight, rimLight, floor);
-    addWarehouseShell(scene);
-    addCeilingLights(scene);
-    addFloorZones(scene);
-    addAxisWidget(scene);
+    const decorGroup = new THREE.Group();
+    decorGroup.add(ambient, keyLight, fillLight, rimLight, floor);
+    addWarehouseShell(decorGroup);
+    addCeilingLights(decorGroup);
+    addFloorZones(decorGroup);
+    addAxisWidget(decorGroup);
+    scene.add(decorGroup);
 
     const locationGroup = new THREE.Group();
     scene.add(locationGroup);
@@ -101,6 +136,12 @@ export function WarehouseScene3D({ locations, selectedLocationId, onSelectLocati
     rendererRef.current = renderer;
     controlsRef.current = controls;
     locationGroupRef.current = locationGroup;
+    decorGroupRef.current = decorGroup;
+    defaultsRef.current = {
+      position: camera.position.clone(),
+      target: controls.target.clone(),
+      zoom: camera.zoom
+    };
 
     const animate = () => {
       controls.update();
@@ -112,7 +153,14 @@ export function WarehouseScene3D({ locations, selectedLocationId, onSelectLocati
 
     const handleResize = () => {
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
-      cameraRef.current.aspect = mountRef.current.clientWidth / Math.max(mountRef.current.clientHeight, 1);
+      const width = mountRef.current.clientWidth;
+      const height = Math.max(mountRef.current.clientHeight, 1);
+      const nextAspect = width / height;
+      const frustumHeight = 1100;
+      cameraRef.current.left = (-frustumHeight * nextAspect) / 2;
+      cameraRef.current.right = (frustumHeight * nextAspect) / 2;
+      cameraRef.current.top = frustumHeight / 2;
+      cameraRef.current.bottom = -frustumHeight / 2;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
     };
@@ -162,6 +210,55 @@ export function WarehouseScene3D({ locations, selectedLocationId, onSelectLocati
       }
     });
   }, [locations, selectedLocationId]);
+
+  useEffect(() => {
+    const decorGroup = decorGroupRef.current;
+    if (decorGroup) {
+      decorGroup.visible = showDecorations;
+    }
+  }, [showDecorations]);
+
+  useEffect(() => {
+    const group = locationGroupRef.current;
+    if (!group) return;
+
+    group.traverse((object) => {
+      if (object.type === "Sprite") {
+        object.visible = showLabels;
+      }
+    });
+  }, [showLabels, locations]);
+
+  useEffect(() => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+
+    const defaults = defaultsRef.current;
+    if (!defaults) return;
+
+    const targetLocation = selectedLocationId ? locationMap.get(selectedLocationId) : undefined;
+
+    if (sceneMode === "overview") {
+      camera.position.copy(defaults.position);
+      controls.target.copy(defaults.target);
+      camera.zoom = defaults.zoom;
+    } else if (sceneMode === "pan") {
+      camera.position.copy(defaults.position);
+      controls.target.copy(defaults.target);
+      camera.zoom = defaults.zoom;
+    } else if (targetLocation) {
+      const target = new THREE.Vector3(targetLocation.coordinateX, 90, targetLocation.coordinateY);
+      controls.target.copy(target);
+      camera.position.set(target.x + 260, 820, target.z + 260);
+      camera.zoom = sceneMode === "inspect" ? 1.1 : 0.95;
+    }
+
+    controls.enableRotate = sceneMode !== "pan";
+    controls.enablePan = true;
+    camera.updateProjectionMatrix();
+    controls.update();
+  }, [locationMap, sceneMode, selectedLocationId]);
 
   return <div ref={mountRef} style={{ width: "100%", height: "720px" }} />;
 }
@@ -387,7 +484,7 @@ function roundRect(
   ctx.closePath();
 }
 
-function addWarehouseShell(scene: THREE.Scene) {
+function addWarehouseShell(scene: THREE.Group | THREE.Scene) {
   const wallMaterial = new THREE.MeshStandardMaterial({
     color: "#717b88",
     roughness: 0.86,
@@ -414,7 +511,7 @@ function addWarehouseShell(scene: THREE.Scene) {
   });
 }
 
-function addCeilingLights(scene: THREE.Scene) {
+function addCeilingLights(scene: THREE.Group | THREE.Scene) {
   const lightPanelGeometry = new THREE.BoxGeometry(120, 8, 34);
   const lightPanelMaterial = new THREE.MeshStandardMaterial({
     color: "#d9e6f4",
@@ -432,7 +529,7 @@ function addCeilingLights(scene: THREE.Scene) {
   }
 }
 
-function addFloorZones(scene: THREE.Scene) {
+function addFloorZones(scene: THREE.Group | THREE.Scene) {
   const createZone = (x: number, z: number, width: number, depth: number, text: string) => {
     const outline = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.BoxGeometry(width, 2, depth)),
@@ -471,7 +568,7 @@ function createFloorText(text: string) {
   return sprite;
 }
 
-function addAxisWidget(scene: THREE.Scene) {
+function addAxisWidget(scene: THREE.Group | THREE.Scene) {
   const axis = new THREE.Group();
   const colors = { x: "#ef4444", y: "#22c55e", z: "#3b82f6" };
   const makeLine = (to: THREE.Vector3, color: string) => {
