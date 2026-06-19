@@ -1,18 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FiEdit3, FiLayers, FiMaximize2, FiMove, FiRotateCw, FiSearch } from "react-icons/fi";
+import { FiCamera, FiCheckSquare, FiEdit3, FiLayers, FiMaximize2, FiMove, FiRotateCw, FiSearch } from "react-icons/fi";
 import { inventoryApi, locationApi, warehouseApi } from "../api/modules";
-import { InventoryLocation, Location } from "../types";
+import { InventoryLocation, Location, LocationStatus } from "../types";
 import { LocationSidePanel } from "../components/LocationSidePanel";
 import { WarehouseScene3D } from "../components/WarehouseScene3D";
 
 const statusLegend = [
-  { status: "Disponible", color: "#22c55e" },
-  { status: "Ocupado", color: "#3b82f6" },
-  { status: "Próximo a vencer", color: "#f59e0b" },
-  { status: "Bloqueado", color: "#ef4444" },
-  { status: "Vacío", color: "#d1d5db" }
-];
+  { status: "OCUPADO", label: "Ocupado", color: "#2e74ff" },
+  { status: "LIBRE", label: "Disponible", color: "#22c55e" },
+  { status: "BLOQUEADO", label: "Bloqueado", color: "#ef4444" },
+  { status: "CUARENTENA", label: "Próx. vencer", color: "#f59e0b" },
+  { status: "VALIDACION", label: "En conteo", color: "#8b5cf6" }
+] as const;
+
+type StatusKey = (typeof statusLegend)[number]["status"] | "PAV" | "NPI" | "DANADO" | "RESERVADO";
+
+const defaultStatusFilter: Record<StatusKey, boolean> = {
+  OCUPADO: true,
+  LIBRE: true,
+  BLOQUEADO: true,
+  CUARENTENA: true,
+  VALIDACION: true,
+  PAV: true,
+  NPI: true,
+  DANADO: true,
+  RESERVADO: true
+};
 
 export function Warehouse3DPage() {
   const [warehouseId, setWarehouseId] = useState("");
@@ -22,6 +36,7 @@ export function Warehouse3DPage() {
   const [sceneMode, setSceneMode] = useState<"overview" | "focus" | "inspect" | "pan">("overview");
   const [showLabels, setShowLabels] = useState(true);
   const [showDecorations, setShowDecorations] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<Record<StatusKey, boolean>>(defaultStatusFilter);
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ["warehouses"],
@@ -43,8 +58,14 @@ export function Warehouse3DPage() {
   }, [warehouseId, warehouses]);
 
   const visibleLocations = useMemo(
-    () => layout.filter((location) => !zoneFilter || location.zone?.code === zoneFilter),
-    [layout, zoneFilter]
+    () =>
+      layout.filter((location) => {
+        const zoneOk = !zoneFilter || location.zone?.code === zoneFilter;
+        const statusKey = location.status as StatusKey;
+        const statusOk = statusFilter[statusKey] !== false;
+        return zoneOk && statusOk;
+      }),
+    [layout, zoneFilter, statusFilter]
   );
 
   const zones = useMemo(
@@ -55,6 +76,7 @@ export function Warehouse3DPage() {
   const occupiedCount = visibleLocations.filter((item) => item.status === "OCUPADO").length;
   const freeCount = visibleLocations.filter((item) => item.status === "LIBRE").length;
   const blockedCount = visibleLocations.filter((item) => item.status === "BLOQUEADO").length;
+  const countingCount = visibleLocations.filter((item) => item.status === "VALIDACION").length;
   const occupancyPercent = visibleLocations.length
     ? Math.round((occupiedCount / visibleLocations.length) * 100)
     : 0;
@@ -93,25 +115,13 @@ export function Warehouse3DPage() {
     await document.exitFullscreen?.();
   };
 
-  return (
-    <div className="row g-4">
-      <div className="col-xl-2">
-        <div className="side-card mb-3">
-          <h5 className="mb-3">Leyenda</h5>
-          <ul className="legend-list">
-            {statusLegend.map((item) => (
-              <li key={item.status} className="legend-item">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="legend-swatch" style={{ background: item.color }} />
-                  <span>{item.status}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+  const selectedWarehouse = warehouses.find((item) => item.id === effectiveWarehouseId);
 
-        <div className="side-card">
-          <h6 className="mb-3">Filtros del layout</h6>
+  return (
+    <div className="warehouse3d-grid">
+      <aside className="warehouse3d-left">
+        <div className="side-card mb-3">
+          <h5 className="mb-3">Filtros del layout</h5>
           <div className="d-flex flex-column gap-3">
             <div>
               <label className="form-label">Bodega</label>
@@ -149,105 +159,192 @@ export function Warehouse3DPage() {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="form-label">Estado</label>
+              <div className="status-filter-list">
+                {statusLegend.map((item) => (
+                  <label key={item.status} className="status-filter-item">
+                    <input
+                      type="checkbox"
+                      checked={statusFilter[item.status]}
+                      onChange={(event) =>
+                        setStatusFilter((current) => ({
+                          ...current,
+                          [item.status]: event.target.checked
+                        }))
+                      }
+                    />
+                    <span className="status-filter-dot" style={{ background: item.color }} />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="col-xl-7">
-        <div className="page-panel p-3">
-          <div className="page-header px-2 pt-2">
+        <div className="side-card">
+          <h6 className="mb-3">Vista</h6>
+          <div className="d-flex gap-2">
+            <button type="button" className={`scene-chip ${sceneMode !== "pan" ? "active" : ""}`} onClick={() => setSceneMode("overview")}>
+              <FiRotateCw size={16} />
+              <span>3D</span>
+            </button>
+            <button type="button" className={`scene-chip ${sceneMode === "pan" ? "active" : ""}`} onClick={() => setSceneMode((current) => (current === "pan" ? "overview" : "pan"))}>
+              <FiMove size={16} />
+              <span>Mover</span>
+            </button>
+          </div>
+
+          <div className="toggle-list mt-3">
+            <label className="toggle-row">
+              <span>Etiquetas</span>
+              <input type="checkbox" checked={showLabels} onChange={(event) => setShowLabels(event.target.checked)} />
+            </label>
+            <label className="toggle-row">
+              <span>Decoración</span>
+              <input type="checkbox" checked={showDecorations} onChange={(event) => setShowDecorations(event.target.checked)} />
+            </label>
+          </div>
+
+          <button type="button" className="btn btn-outline-light w-100 mt-3" onClick={handleFullscreen}>
+            Pantalla completa
+          </button>
+        </div>
+
+        <div className="side-card mt-3">
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <span className="status-dot" />
+            <strong>Monitoreo</strong>
+          </div>
+          <div className="small text-muted">Sistema activo</div>
+          <div className="mini-stat mt-3">
+            <div className="mini-stat-label">Última actualización</div>
+            <div className="mini-stat-value">Hoy, {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+          </div>
+        </div>
+      </aside>
+
+      <section className="warehouse3d-center">
+        <div className="page-panel warehouse3d-hero mb-4 p-4">
+          <div className="warehouse3d-hero-grid">
             <div>
-              <div className="page-kicker">Warehouse 3D</div>
-              <div className="page-title" style={{ fontSize: "1.7rem" }}>Layout 3D del almacén</div>
-              <p className="page-copy">Racks, zonas y ubicaciones modeladas con interacción avanzada en navegador.</p>
+              <div className="page-kicker">Maestros</div>
+              <div className="page-title">Warehouse 3D</div>
+              <p className="page-copy">
+                Visualiza racks, zonas y ocupación en un layout 3D industrial con datos operativos en tiempo real.
+              </p>
+              <div className="hero-chip-row mt-3">
+                <span className="glass-pill">
+                  <span className="status-dot" />
+                  {selectedWarehouse ? `${selectedWarehouse.code} · ${selectedWarehouse.name}` : "Sin bodega"}
+                </span>
+                <span className="hero-chip">
+                  <FiLayers size={14} />
+                  {visibleLocations.length} ubicaciones visibles
+                </span>
+                <span className="hero-chip">
+                  <FiCheckSquare size={14} />
+                  {occupancyPercent}% ocupación
+                </span>
+              </div>
+            </div>
+
+            <div className="metric-tile warehouse3d-hero-metric">
+              <div className="metric-header">
+                <div>
+                  <div className="metric-label">Ubicaciones registradas</div>
+                  <p className="metric-value">{layout.length}</p>
+                  <div className="metric-helper">Vista maestra del layout 3D</div>
+                </div>
+                <div className="metric-icon">
+                  <FiCamera size={20} />
+                </div>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="scene-kpi-strip mb-3">
-            <div className="scene-kpi">
-              <div className="scene-kpi-value">{visibleLocations.length}</div>
-              <div className="scene-kpi-label">Ubicaciones visibles</div>
-            </div>
-            <div className="scene-kpi">
-              <div className="scene-kpi-value">{occupiedCount}</div>
-              <div className="scene-kpi-label">Ocupadas</div>
-            </div>
-            <div className="scene-kpi">
-              <div className="scene-kpi-value">{freeCount}</div>
-              <div className="scene-kpi-label">Disponibles</div>
-            </div>
-            <div className="scene-kpi">
-              <div className="scene-kpi-value">{occupancyPercent}%</div>
-              <div className="scene-kpi-label">Ocupación</div>
-            </div>
+        <div className="scene-kpi-strip mb-3">
+          <div className="scene-kpi">
+            <div className="scene-kpi-value">{visibleLocations.length}</div>
+            <div className="scene-kpi-label">Ubicaciones visibles</div>
           </div>
-
-          <div className="scene-wrapper">
-            <WarehouseScene3D
-              locations={visibleLocations}
-              selectedLocationId={selectedLocation?.id}
-              sceneMode={sceneMode}
-              showLabels={showLabels}
-              showDecorations={showDecorations}
-              onSelectLocation={handleSelectLocation}
-            />
+          <div className="scene-kpi">
+            <div className="scene-kpi-value">{occupiedCount}</div>
+            <div className="scene-kpi-label">Ocupadas</div>
           </div>
+          <div className="scene-kpi">
+            <div className="scene-kpi-value">{freeCount}</div>
+            <div className="scene-kpi-label">Disponibles</div>
+          </div>
+          <div className="scene-kpi">
+            <div className="scene-kpi-value">{blockedCount}</div>
+            <div className="scene-kpi-label">Bloqueadas</div>
+          </div>
+          <div className="scene-kpi scene-kpi-ring">
+            <div className="scene-kpi-value">{occupancyPercent}%</div>
+            <div className="scene-kpi-label">Ocupación</div>
+          </div>
+        </div>
 
-          <div className="scene-toolbar mt-3">
-            <button
-              type="button"
-              className={`scene-tool ${sceneMode === "overview" ? "active" : ""}`}
-              onClick={() => setSceneMode("overview")}
-            >
+        <div className="scene-wrapper warehouse3d-scene-shell">
+          <WarehouseScene3D
+            locations={visibleLocations}
+            selectedLocationId={selectedLocation?.id}
+            sceneMode={sceneMode}
+            showLabels={showLabels}
+            showDecorations={showDecorations}
+            onSelectLocation={handleSelectLocation}
+          />
+
+          <div className="scene-toolbar scene-toolbar-floating">
+            <button type="button" className={`scene-tool ${sceneMode === "overview" ? "active" : ""}`} onClick={() => setSceneMode("overview")}>
               <FiRotateCw size={18} /><small>Rotar</small>
             </button>
-            <button
-              type="button"
-              className={`scene-tool ${sceneMode === "pan" ? "active" : ""}`}
-              onClick={() => setSceneMode((current) => (current === "pan" ? "overview" : "pan"))}
-            >
+            <button type="button" className={`scene-tool ${sceneMode === "pan" ? "active" : ""}`} onClick={() => setSceneMode((current) => (current === "pan" ? "overview" : "pan"))}>
               <FiMove size={18} /><small>Mover</small>
             </button>
-            <button
-              type="button"
-              className={`scene-tool ${sceneMode === "focus" ? "active" : ""}`}
-              onClick={() => setSceneMode("focus")}
-            >
-              <FiSearch size={18} /><small>Zoom</small>
+            <button type="button" className={`scene-tool ${sceneMode === "focus" ? "active" : ""}`} onClick={() => setSceneMode("focus")}>
+              <FiSearch size={18} /><small>Buscar</small>
             </button>
-            <button
-              type="button"
-              className={`scene-tool ${sceneMode === "inspect" ? "active" : ""}`}
-              onClick={() => setSceneMode("inspect")}
-            >
+            <button type="button" className={`scene-tool ${sceneMode === "inspect" ? "active" : ""}`} onClick={() => setSceneMode("inspect")}>
               <FiEdit3 size={18} /><small>Medir</small>
             </button>
-            <button
-              type="button"
-              className={`scene-tool ${showLabels ? "active" : ""}`}
-              onClick={() => setShowLabels((current) => !current)}
-            >
-              <FiEdit3 size={18} /><small>Etiquetas</small>
+            <button type="button" className={`scene-tool ${showLabels ? "active" : ""}`} onClick={() => setShowLabels((current) => !current)}>
+              <FiLayers size={18} /><small>Etiquetas</small>
             </button>
-            <button
-              type="button"
-              className={`scene-tool ${showDecorations ? "active" : ""}`}
-              onClick={() => setShowDecorations((current) => !current)}
-            >
+            <button type="button" className={`scene-tool ${showDecorations ? "active" : ""}`} onClick={() => setShowDecorations((current) => !current)}>
               <FiLayers size={18} /><small>Capas</small>
             </button>
             <button type="button" className="scene-tool" onClick={handleFullscreen}>
-              <FiMaximize2 size={18} /><small>Pantalla</small>
+              <FiMaximize2 size={18} /><small>Captura</small>
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="col-xl-3 d-flex flex-column gap-3">
-        <LocationSidePanel location={selectedLocation} inventory={inventory.length ? inventory : selectedLocation?.inventory ?? []} />
+      <aside className="warehouse3d-right d-flex flex-column gap-3">
+        <LocationSidePanel
+          location={selectedLocation}
+          inventory={inventory.length ? inventory : selectedLocation?.inventory ?? []}
+        />
 
-          <div className="side-card">
-            <h5 className="mb-3">Ocupabilidad por zona</h5>
+        <div className="side-card">
+          <h5 className="mb-3">Leyenda de estados</h5>
+          <div className="legend-grid">
+            {statusLegend.map((item) => (
+              <div key={item.status} className="legend-chip">
+                <span className="legend-swatch" style={{ background: item.color }} />
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="side-card">
+          <h5 className="mb-3">Ocupabilidad por zona</h5>
           <div className="donut-shell">
             <div className="donut-ring">
               <div className="donut-center">
@@ -257,26 +354,28 @@ export function Warehouse3DPage() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="d-flex flex-column gap-2 mt-3">
-            {(zones.length ? zones : ["A", "B", "C", "D"]).slice(0, 5).map((zone, index) => {
-              const zoneLocations = visibleLocations.filter((item) => item.zone?.code === zone);
-              const zoneOccupied = zoneLocations.filter((item) => item.status === "OCUPADO").length;
-              const zonePercent = zoneLocations.length ? Math.round((zoneOccupied / zoneLocations.length) * 100) : [85, 72, 65, 58, 48][index] ?? 0;
+            <div className="zone-summary-list">
+              {(zones.length ? zones : ["A", "B", "C", "D"]).slice(0, 5).map((zone, index) => {
+                const zoneLocations = visibleLocations.filter((item) => item.zone?.code === zone);
+                const zoneOccupied = zoneLocations.filter((item) => item.status === "OCUPADO").length;
+                const zonePercent = zoneLocations.length
+                  ? Math.round((zoneOccupied / zoneLocations.length) * 100)
+                  : [25, 18, 32, 15, 10][index] ?? 0;
 
-              return (
-                <div key={zone}>
-                  <div className="d-flex justify-content-between small mb-1">
-                    <span>Zona {zone}</span>
-                    <span>{zonePercent}%</span>
+                return (
+                  <div key={zone}>
+                    <div className="d-flex justify-content-between small mb-1">
+                      <span>{zone}</span>
+                      <span>{zonePercent}%</span>
+                    </div>
+                    <div className="mini-progress">
+                      <span style={{ width: `${zonePercent}%` }} />
+                    </div>
                   </div>
-                  <div className="mini-progress">
-                    <span style={{ width: `${zonePercent}%` }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -287,12 +386,10 @@ export function Warehouse3DPage() {
             <li><span>Ubicaciones ocupadas</span><strong>{occupiedCount}</strong></li>
             <li><span>Disponibles</span><strong>{freeCount}</strong></li>
             <li><span>Bloqueadas</span><strong>{blockedCount}</strong></li>
+            <li><span>En conteo</span><strong>{countingCount}</strong></li>
           </ul>
-          <div className="mt-3 small text-muted">
-            Demo activa sobre {selectedLocation?.locationCode || "sin selección"}.
-          </div>
         </div>
-      </div>
+      </aside>
     </div>
   );
 }

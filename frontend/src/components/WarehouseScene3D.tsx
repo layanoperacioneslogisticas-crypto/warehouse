@@ -28,7 +28,7 @@ export function WarehouseScene3D({
 }: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -53,19 +53,9 @@ export function WarehouseScene3D({
     scene.background = new THREE.Color("#07111c");
     scene.fog = new THREE.Fog("#07111c", 1500, 5000);
 
-    const aspect = mount.clientWidth / Math.max(mount.clientHeight, 1);
-    const frustumHeight = 1080;
-    const camera = new THREE.OrthographicCamera(
-      (-frustumHeight * aspect) / 2,
-      (frustumHeight * aspect) / 2,
-      frustumHeight / 2,
-      -frustumHeight / 2,
-      5,
-      12000
-    );
-    camera.position.set(980, 980, 1360);
-    camera.zoom = 0.8;
-    camera.updateProjectionMatrix();
+    const camera = new THREE.PerspectiveCamera(34, mount.clientWidth / Math.max(mount.clientHeight, 1), 12, 12000);
+    camera.position.set(1080, 980, 1420);
+    camera.lookAt(520, 110, 280);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -84,11 +74,11 @@ export function WarehouseScene3D({
     controls.target.set(520, 110, 280);
     controls.enablePan = true;
     controls.screenSpacePanning = false;
-    controls.zoomSpeed = 0.58;
+    controls.zoomSpeed = 0.5;
     controls.rotateSpeed = 0.44;
     controls.panSpeed = 0.68;
-    controls.minZoom = 0.7;
-    controls.maxZoom = 1.18;
+    controls.minDistance = 760;
+    controls.maxDistance = 2450;
     controls.minPolarAngle = Math.PI / 4.85;
     controls.maxPolarAngle = Math.PI / 2.16;
 
@@ -127,12 +117,7 @@ export function WarehouseScene3D({
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
       const width = mountRef.current.clientWidth;
       const height = Math.max(mountRef.current.clientHeight, 1);
-      const nextAspect = width / height;
-      const nextFrustumHeight = 1080;
-      cameraRef.current.left = (-nextFrustumHeight * nextAspect) / 2;
-      cameraRef.current.right = (nextFrustumHeight * nextAspect) / 2;
-      cameraRef.current.top = nextFrustumHeight / 2;
-      cameraRef.current.bottom = -nextFrustumHeight / 2;
+      cameraRef.current.aspect = width / height;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(width, height);
     };
@@ -196,17 +181,15 @@ export function WarehouseScene3D({
         radius * 1.1,
         frame.center.z + radius * 0.88
       );
-      const overviewZoom = clamp(820 / (radius * 2.15), 0.72, 1.02);
 
       defaultsRef.current = {
         position: overviewPosition.clone(),
         target: frame.center.clone(),
-        zoom: overviewZoom
+        zoom: 1
       };
 
       if (sceneMode === "overview" || !selectedLocationId) {
         camera.position.copy(overviewPosition);
-        camera.zoom = overviewZoom;
         controls.target.copy(frame.center);
         camera.updateProjectionMatrix();
         controls.update();
@@ -245,12 +228,10 @@ export function WarehouseScene3D({
     if (sceneMode === "overview" || sceneMode === "pan") {
       camera.position.copy(defaults.position);
       controls.target.copy(defaults.target);
-      camera.zoom = defaults.zoom;
     } else if (targetLocation) {
       const target = new THREE.Vector3(targetLocation.coordinateX, 90, targetLocation.coordinateY);
       controls.target.copy(target);
       camera.position.set(target.x + 240, 760, target.z + 240);
-      camera.zoom = sceneMode === "inspect" ? 1.02 : 0.9;
     }
 
     controls.enableRotate = sceneMode !== "pan";
@@ -259,7 +240,7 @@ export function WarehouseScene3D({
     controls.update();
   }, [locationMap, sceneMode, selectedLocationId]);
 
-  return <div ref={mountRef} style={{ width: "100%", height: "720px" }} />;
+  return <div ref={mountRef} style={{ width: "100%", height: "760px" }} />;
 }
 
 function calculateLayoutFrame(locations: Location[]) {
@@ -272,10 +253,6 @@ function calculateLayoutFrame(locations: Location[]) {
   const center = new THREE.Vector3((minX + maxX) / 2, 110, (minZ + maxZ) / 2);
   const radius = Math.max(maxX - minX, maxZ - minZ);
   return { center, radius };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
 }
 
 function createWarehouseShell() {
