@@ -21,9 +21,17 @@ export function createLocationLabel(text: string, accent = "#eef6ff", layer = "l
   ctx.stroke();
 
   ctx.fillStyle = accent;
-  ctx.font = "bold 40px Segoe UI";
   ctx.textAlign = "center";
-  ctx.fillText(text, canvas.width / 2, 75);
+  const lines = String(text).split("\n");
+  if (lines.length > 1) {
+    ctx.font = "bold 32px Segoe UI";
+    ctx.fillText(lines[0], canvas.width / 2, 56);
+    ctx.font = "700 24px Segoe UI";
+    ctx.fillText(lines[1], canvas.width / 2, 86);
+  } else {
+    ctx.font = "bold 40px Segoe UI";
+    ctx.fillText(text, canvas.width / 2, 75);
+  }
 
   const texture = new THREE.CanvasTexture(canvas);
   const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
