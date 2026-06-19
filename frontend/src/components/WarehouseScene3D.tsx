@@ -28,7 +28,7 @@ export function WarehouseScene3D({
 }: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -53,9 +53,20 @@ export function WarehouseScene3D({
     scene.background = new THREE.Color("#07111c");
     scene.fog = new THREE.Fog("#07111c", 1500, 5000);
 
-    const camera = new THREE.PerspectiveCamera(34, mount.clientWidth / Math.max(mount.clientHeight, 1), 12, 12000);
-    camera.position.set(1080, 980, 1420);
+    const aspect = mount.clientWidth / Math.max(mount.clientHeight, 1);
+    const frustumHeight = 1320;
+    const camera = new THREE.OrthographicCamera(
+      (-frustumHeight * aspect) / 2,
+      (frustumHeight * aspect) / 2,
+      frustumHeight / 2,
+      -frustumHeight / 2,
+      10,
+      12000
+    );
+    camera.position.set(1320, 1680, 1320);
+    camera.zoom = 0.72;
     camera.lookAt(520, 110, 280);
+    camera.updateProjectionMatrix();
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -74,11 +85,11 @@ export function WarehouseScene3D({
     controls.target.set(520, 110, 280);
     controls.enablePan = true;
     controls.screenSpacePanning = false;
-    controls.zoomSpeed = 0.5;
-    controls.rotateSpeed = 0.44;
-    controls.panSpeed = 0.68;
-    controls.minDistance = 760;
-    controls.maxDistance = 2450;
+    controls.zoomSpeed = 0.75;
+    controls.rotateSpeed = 0.35;
+    controls.panSpeed = 0.55;
+    controls.minZoom = 0.5;
+    controls.maxZoom = 1.05;
     controls.minPolarAngle = Math.PI / 4.85;
     controls.maxPolarAngle = Math.PI / 2.16;
 
@@ -117,7 +128,12 @@ export function WarehouseScene3D({
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
       const width = mountRef.current.clientWidth;
       const height = Math.max(mountRef.current.clientHeight, 1);
-      cameraRef.current.aspect = width / height;
+      const aspect = width / height;
+      const frustumHeight = 1320;
+      cameraRef.current.left = (-frustumHeight * aspect) / 2;
+      cameraRef.current.right = (frustumHeight * aspect) / 2;
+      cameraRef.current.top = frustumHeight / 2;
+      cameraRef.current.bottom = -frustumHeight / 2;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(width, height);
     };
@@ -177,19 +193,20 @@ export function WarehouseScene3D({
       const frame = calculateLayoutFrame(locations);
       const radius = Math.max(frame.radius, 420);
       const overviewPosition = new THREE.Vector3(
-        frame.center.x + radius * 0.88,
-        radius * 1.1,
-        frame.center.z + radius * 0.88
+        frame.center.x + radius * 1.08,
+        frame.center.y + radius * 1.42,
+        frame.center.z + radius * 1.08
       );
 
       defaultsRef.current = {
         position: overviewPosition.clone(),
         target: frame.center.clone(),
-        zoom: 1
+        zoom: 0.72
       };
 
       if (sceneMode === "overview" || !selectedLocationId) {
         camera.position.copy(overviewPosition);
+        camera.zoom = 0.72;
         controls.target.copy(frame.center);
         camera.updateProjectionMatrix();
         controls.update();
@@ -228,10 +245,12 @@ export function WarehouseScene3D({
     if (sceneMode === "overview" || sceneMode === "pan") {
       camera.position.copy(defaults.position);
       controls.target.copy(defaults.target);
+      camera.zoom = defaults.zoom;
     } else if (targetLocation) {
       const target = new THREE.Vector3(targetLocation.coordinateX, 90, targetLocation.coordinateY);
       controls.target.copy(target);
-      camera.position.set(target.x + 240, 760, target.z + 240);
+      camera.position.set(target.x + 680, target.y + 980, target.z + 680);
+      camera.zoom = 0.84;
     }
 
     controls.enableRotate = sceneMode !== "pan";
