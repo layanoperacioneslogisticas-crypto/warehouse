@@ -5,7 +5,7 @@ export function useAuth() {
   return useQuery({
     queryKey: ["auth", "me"],
     queryFn: authApi.me,
-    enabled: Boolean(localStorage.getItem("wm_token"))
+    enabled: Boolean(localStorage.getItem("wm_token")),
+    retry: false
   });
 }
-

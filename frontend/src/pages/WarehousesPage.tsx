@@ -13,10 +13,13 @@ const columns: ColumnDef<Warehouse>[] = [
 ];
 
 export function WarehousesPage() {
-  const { data = [] } = useQuery({
+  const { data = [], isLoading, error } = useQuery({
     queryKey: ["warehouses"],
-    queryFn: warehouseApi.list
+    queryFn: warehouseApi.list,
+    retry: false
   });
+
+  const errorMessage = error instanceof Error ? error.message : "";
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -41,6 +44,12 @@ export function WarehousesPage() {
             <div className="text-muted">Vista tabular del maestro principal.</div>
           </div>
         </div>
+        {errorMessage ? (
+          <div className="alert alert-danger mb-3">
+            No se pudo cargar el catálogo de bodegas. {errorMessage}
+          </div>
+        ) : null}
+        {isLoading ? <div className="text-muted mb-3">Cargando bodegas...</div> : null}
         <DataTable data={data} columns={columns} />
       </section>
     </div>

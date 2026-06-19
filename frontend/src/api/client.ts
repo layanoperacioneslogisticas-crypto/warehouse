@@ -12,5 +12,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export default api;
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem("wm_token");
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login?reason=session_expired");
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
+export default api;
