@@ -25,13 +25,13 @@ export function createPallet({
   const slatMaterial = getPalletMaterial();
   const slatPositions = [-8, 0, 8];
   slatPositions.forEach((offset) => {
-    const slat = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.4, 26), slatMaterial);
-    slat.position.set(offset, 1.8, 0);
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.5, 26), slatMaterial);
+    slat.position.set(offset, 1.75, 0);
     slat.castShadow = true;
     group.add(slat);
   });
 
-  const quantity = inventoryItem ? Math.max(1, Math.ceil(inventoryItem.quantity / 6)) : 4;
+  const quantity = inventoryItem ? Math.max(1, Math.ceil(inventoryItem.quantity / 5)) : 5;
   const accent = getRackPalette(locationStatus, selected).accent;
   const stack = createBoxStack({
     quantity,
@@ -44,7 +44,7 @@ export function createPallet({
   if (highlight !== "none") {
     const glowColor = highlight === "blocked" || highlight === "damaged" ? "#ef4444" : highlight === "counting" ? "#46a6ff" : "#f59e0b";
     const glow = new THREE.Mesh(
-      new THREE.BoxGeometry(28, 14, 34),
+      new THREE.BoxGeometry(28, 15, 34),
       getHighlightMaterial(glowColor, 0.18)
     );
     glow.position.y = 7;

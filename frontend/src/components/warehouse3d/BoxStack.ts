@@ -23,20 +23,27 @@ export function createBoxStack({
   const layerCount = Math.max(1, Math.min(4, Math.ceil(quantity / 8)));
   const columns = quantity > 20 ? 2 : 1;
   const rows = quantity > 14 ? 2 : 1;
-  const stackHeight = Math.max(1, Math.min(3, Math.ceil(quantity / 10)));
+  const stackHeight = Math.max(1, Math.min(4, Math.ceil(quantity / 9)));
 
   for (let layer = 0; layer < layerCount; layer += 1) {
     for (let column = 0; column < columns; column += 1) {
       for (let row = 0; row < rows; row += 1) {
-        const box = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+        const shrink = 1 - layer * 0.02;
+        const box = new THREE.Mesh(
+          new THREE.BoxGeometry(width * shrink, height * shrink, depth * shrink),
+          material.clone()
+        );
+        if (box.material instanceof THREE.MeshStandardMaterial) {
+          box.material.color.offsetHSL(0, 0, layer * 0.01);
+        }
         box.castShadow = true;
         box.receiveShadow = true;
         box.position.set(
           (column - (columns - 1) / 2) * (width + 2),
-          layer * (height + 0.8) + height / 2,
+          layer * (height + 0.8) + (height * shrink) / 2,
           (row - (rows - 1) / 2) * (depth + 1.2)
         );
-        box.rotation.y = (layer + row) % 2 === 0 ? 0.03 : -0.03;
+        box.rotation.y = (layer + row) % 2 === 0 ? 0.02 : -0.02;
         group.add(box);
       }
     }
@@ -59,7 +66,7 @@ export function createBoxStack({
     new THREE.BoxGeometry(width * 0.7, stackHeight * (height + 0.8) * 0.25, depth * 0.7),
     new THREE.MeshStandardMaterial({
       color: selected ? "#f3f7ff" : "#f0d2a4",
-      roughness: 0.88,
+      roughness: 0.92,
       metalness: 0.02
     })
   );
