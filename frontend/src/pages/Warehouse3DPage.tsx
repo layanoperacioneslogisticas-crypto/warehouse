@@ -67,17 +67,19 @@ export function Warehouse3DPage() {
 
     if (nextLocation && nextLocation.id !== selectedLocation?.id) {
       setSelectedLocation(nextLocation);
-      inventoryApi.byLocation(nextLocation.id).then(setInventory).catch(() => setInventory([]));
+      setInventory(nextLocation.inventory ?? []);
+      inventoryApi.byLocation(nextLocation.id).then(setInventory).catch(() => setInventory(nextLocation.inventory ?? []));
     }
   }, [visibleLocations, selectedLocation]);
 
   const handleSelectLocation = async (location: Location) => {
     setSelectedLocation(location);
+    setInventory(location.inventory ?? []);
     try {
       const rows = await inventoryApi.byLocation(location.id);
       setInventory(rows);
     } catch {
-      setInventory([]);
+      setInventory(location.inventory ?? []);
     }
     setSceneMode("focus");
   };
@@ -242,7 +244,7 @@ export function Warehouse3DPage() {
       </div>
 
       <div className="col-xl-3 d-flex flex-column gap-3">
-        <LocationSidePanel location={selectedLocation} inventory={inventory} />
+        <LocationSidePanel location={selectedLocation} inventory={inventory.length ? inventory : selectedLocation?.inventory ?? []} />
 
           <div className="side-card">
             <h5 className="mb-3">Ocupabilidad por zona</h5>

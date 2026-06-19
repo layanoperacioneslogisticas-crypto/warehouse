@@ -209,7 +209,34 @@ export function WarehouseScene3D({
         interactionRef.current.set(location.id, hitbox);
       }
     });
-  }, [locations, selectedLocationId]);
+
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (camera && controls && locations.length > 0) {
+      const frame = calculateLayoutFrame(locations);
+      const radius = Math.max(frame.radius, 320);
+      const overviewPosition = new THREE.Vector3(
+        frame.center.x + radius * 0.95,
+        radius * 1.2,
+        frame.center.z + radius * 0.95
+      );
+      const overviewZoom = clamp(940 / (radius * 2.2), 0.7, 1.16);
+
+      defaultsRef.current = {
+        position: overviewPosition.clone(),
+        target: frame.center.clone(),
+        zoom: overviewZoom
+      };
+
+      if (sceneMode === "overview" || !selectedLocationId) {
+        camera.position.copy(overviewPosition);
+        camera.zoom = overviewZoom;
+        controls.target.copy(frame.center);
+        camera.updateProjectionMatrix();
+        controls.update();
+      }
+    }
+  }, [locations, sceneMode, selectedLocationId]);
 
   useEffect(() => {
     const decorGroup = decorGroupRef.current;
@@ -461,6 +488,22 @@ function createLabel(locationCode: string, zoneCode: string, selected: boolean) 
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(90, 34, 1);
   return sprite;
+}
+
+function calculateLayoutFrame(locations: Location[]) {
+  const xs = locations.map((location) => location.coordinateX);
+  const zs = locations.map((location) => location.coordinateY);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minZ = Math.min(...zs);
+  const maxZ = Math.max(...zs);
+  const center = new THREE.Vector3((minX + maxX) / 2, 110, (minZ + maxZ) / 2);
+  const radius = Math.max(maxX - minX, maxZ - minZ);
+  return { center, radius };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function roundRect(
